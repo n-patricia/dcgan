@@ -12,7 +12,7 @@ def _helper(netG, x_tilde, eps, sigma):
     logjoint_vec = -0.5 * (log_prob_eps + log_prob_x)
     logjoint_vec = logjoint_vec.squeeze()
     logjoint = torch.sum(logjoint_vec)
-    logjoint.backward()
+    logjoint.backward(retain_graph=True)
     grad_logjoint = eps.grad
     return logjoint_vec, logjoint, grad_logjoint
 
@@ -52,7 +52,7 @@ def get_samples(netG, x_tilde, eps_init, sigma, burn_in, num_samples_posterior, 
         unif = torch.rand(b_size).view(-1, 1).to(device)
         accept = unif.lt(torch.exp(current_U - proposed_U + current_K - proposed_K))
         accept = accept.float().squeeze()
-        accept[:, i] = accept
+        acceptHist[:, i] = accept
         ind = accept.nonzero().squeeze()
         try:
             len(ind) > 0

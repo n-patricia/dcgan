@@ -29,14 +29,11 @@ def dcgan(data_loader, netG, netD, args):
     optimizerG = optim.Adam(paramsG, lr=args.lr, betas=(args.beta1, 0.999))
     optimizerD = optim.Adam(paramsD, lr=args.lr, betas=(args.beta1, 0.999))
     writer = SummaryWriter('./runs/{}_exp_1'.format(args.dataset))
-
-    dataiter = iter(data_loader)
-    img, _ = dataiter.next()
-    writer.add_graph(netG, make_grid(img.detach()))
+    writer.add_graph(netG, fixed_noise)
 
     print('Starting training ...')
     # For each epoch
-    for epoch in tqdm(range(args.num_epochs)):
+    for epoch in range(args.num_epochs):
         # For each batch in the data_loader
         for i, data in enumerate(data_loader, 0):
             ###########################
@@ -58,7 +55,7 @@ def dcgan(data_loader, netG, netD, args):
 
             ## Train with all-fake batch
             # Generate batch of latent vectors
-            noise = torch.rand(b_size, args.nz, 1, 1, device=device)
+            noise = torch.randn(b_size, args.nz, 1, 1, device=device)
             # Generate fake image batch with G
             fake = netG(noise)
             label.fill_(fake_label)
@@ -81,7 +78,7 @@ def dcgan(data_loader, netG, netD, args):
             # fake labels are real for generator cost
             label.fill_(real_label)
             # Since we just updated D, perform another forward pass of all-fake batch through D
-            output = netD(fake)
+            output = netD(fake).view(-1)
             # Calculate G's loss based on this output
             errG = criterion(output, label)
             # Calculate gradients for G
@@ -100,7 +97,7 @@ def dcgan(data_loader, netG, netD, args):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach()
                 fake_grid = make_grid(fake, padding=2)
-                writer.add_image('fake_image_epoch_{}'.format(epoch))
+                writer.add_image('fake_image_epoch_{}'.format(epoch), fake_grid)
                 writer.add_scalar('loss/generator', errG.item(), iters)
                 writer.add_scalar('loss/discriminator', errD.item(), iters)
                 writer.add_scalar('disc_output/z1', D_G_z1, iters)
@@ -122,18 +119,16 @@ def presgan(data_loader, netG, netD, log_sigma, args):
     paramsD = [p for p in netD.parameters() if p.requires_grad]
     optimizerG = optim.Adam(paramsG, lr=args.lr, betas=(args.beta1, 0.999))
     optimizerD = optim.Adam(paramsD, lr=args.lr, betas=(args.beta1, 0.999))
-    optimizerSigma = optim.Adam([log_sigma], lr=args.sigma_lr, betas=(args.beta1, 0.999))
 
-    writer = SummaryWriter('./runs/{}_exp_1'.format(args.dataset))
+    optimizerSigma = optim.Adam([log_sigma], lr=args.sigma_lr, betas=(args.beta1, 0.999))
     stepsize = args.stepsize_num / args.nz
 
-    dataiter = iter(data_loader)
-    img, _ = dataiter.next()
-    writer.add_graph(netG, make_grid(img.detach()))
+    writer = SummaryWriter('./runs/{}_exp_1'.format(args.dataset))
+    writer.add_graph(netG, fixed_noise)
 
     print('Starting training ...')
     # For each epoch
-    for epoch in tqdm(range(args.num_epochs)):
+    for epoch in range(args.num_epochs):
         # For each batch in the data_loader
         for i, data in enumerate(data_loader, 0):
             sigma_x = F.softplus(log_sigma).view(1, 1, args.image_size, args.image_size)
@@ -147,7 +142,7 @@ def presgan(data_loader, netG, netD, log_sigma, args):
             # create noise based on real data
             noise_eta = torch.randn_like(real_cpu)
             noised_data = real_cpu + sigma_x.detach() * noise_eta
-            output = netD(noised_data)
+            output = netD(noised_data).view(-1)
             errD_real = criterion(output, label)
             errD_real.backward()
             D_x = output.mean().item()
@@ -157,7 +152,7 @@ def presgan(data_loader, netG, netD, log_sigma, args):
             mu_fake = netG(noise)
             fake = mu_fake + sigma_x * noise_eta
             label.fill_(fake_label)
-            output = netD(fake.detach())
+            output = netD(fake.detach()).view(-1)
             errD_fake = criterion(output, label)
             errD_fake.backward(retain_graph=True)
             D_G_z1 = output.mean().item()
@@ -174,7 +169,7 @@ def presgan(data_loader, netG, netD, log_sigma, args):
             noise_eta = torch.randn_like(output)
             fake = output + noise_eta * sigma_x
 
-            fake_dec = netD(fake)
+            fake_dec = netD(fake).view(-1)
             errG_gan = criterion(fake_dec, label)
             D_G_z2 = fake_dec.mean().item()
             
@@ -197,14 +192,14 @@ def presgan(data_loader, netG, netD, log_sigma, args):
 
             if i%50==0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                        % (epoch, num_epochs, i, len(data_loader), errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
+                        % (epoch, args.num_epochs, i, len(data_loader), errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
 
 
             if (iters%500==0) or ((epoch==args.num_epochs-1) and (i==len(data_loader)-1)):
                 with torch.no_grad():
                     fake = netG(fixed_noise).detach()
                 fake_grid = make_grid(fake, padding=2)
-                writer.add_image('fake_image_epoch_{}'.format(epoch))
+                writer.add_image('fake_image_epoch_{}'.format(epoch), fake_grid)
                 writer.add_scalar('loss/generator', errG.item(), iters)
                 writer.add_scalar('loss/discriminator', errD.item(), iters)
                 writer.add_scalar('disc_output/z1', D_G_z1, iters)

@@ -15,7 +15,7 @@ from model import build_discriminator, build_generator
 parser = argparse.ArgumentParser()
 
 # General training
-parser.add_argument('--dataset', required=True, default='cifar10', help='mnist | cifar10')
+parser.add_argument('--dataset', default='cifar10', help='mnist | cifar10')
 parser.add_argument('--dataroot', type=str, default='./data', help='data path')
 parser.add_argument('--batch_size', type=int, default=16, help='num of batch size')
 parser.add_argument('--image_size', type=int, default=64, help='image size')
@@ -68,16 +68,16 @@ else:
 print('Generating data...')
 torch.manual_seed(args.seed)
 if args.dataset=='cifar10':
-    data = torchvision.datasets.CIFAR10(dataroot, train=True, transform=T.Compose(transforms), download=True)
-    data_test = torchvision.datasets.CIFAR10(dataroot, train=False, transform=T.Compose(transforms), download=True)
+    data = torchvision.datasets.CIFAR10(args.dataroot, train=True, transform=T.Compose(transforms), download=True)
+    data_test = torchvision.datasets.CIFAR10(args.dataroot, train=False, transform=T.Compose(transforms), download=True)
 elif args.dataset=='mnist':
-    data = torchvision.datasets.MNIST(dataroot, train=True, transform=T.Compose(transforms), download=True)
-    data_test = torchvision.datasets.MNIST(dataroot, train=False, transform=T.Compose(transforms), download=True)
+    data = torchvision.datasets.MNIST(args.dataroot, train=True, transform=T.Compose(transforms), download=True)
+    data_test = torchvision.datasets.MNIST(args.dataroot, train=False, transform=T.Compose(transforms), download=True)
 else:
-    print('Module is not implemented!!!')
+    print('Dataset is not implemented!!!')
 
-data_loader = DataLoader(data, batch_size=batch_size, shuffle=True, num_workers=args.workers)
-data_loader_test = DataLoader(data_test, batch_size=batch_size, shuffle=False, num_workers=args.workers)
+data_loader = DataLoader(data, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
+data_loader_test = DataLoader(data_test, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
 print('Building model...')
 netG = build_generator(args)
