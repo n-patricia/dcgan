@@ -22,18 +22,21 @@ D_losses = []
 iters = 0
 
 def dcgan(data_loader, netG, netD, args):
+    global iters
+
     device = args.device
     fixed_noise = torch.randn(args.batch_size, args.nz, 1, 1, device=device)
     paramsG = [p for p in netG.parameters() if p.requires_grad]
     paramsD = [p for p in netD.parameters() if p.requires_grad]
     optimizerG = optim.Adam(paramsG, lr=args.lr, betas=(args.beta1, 0.999))
     optimizerD = optim.Adam(paramsD, lr=args.lr, betas=(args.beta1, 0.999))
-    writer = SummaryWriter('./runs/{}_exp_1'.format(args.dataset))
+    
+    writer = SummaryWriter('./{}/{}/{}_exp_{}'.format(args.experiment_path, args.model, args.dataset, args.run))
     writer.add_graph(netG, fixed_noise)
 
     print('Starting training ...')
     # For each epoch
-    for epoch in range(args.num_epochs):
+    for epoch in tqdm(range(args.num_epochs)):
         # For each batch in the data_loader
         for i, data in enumerate(data_loader, 0):
             ###########################
@@ -55,7 +58,7 @@ def dcgan(data_loader, netG, netD, args):
 
             ## Train with all-fake batch
             # Generate batch of latent vectors
-            noise = torch.randn(b_size, args.nz, 1, 1, device=device)
+            noise = torch.rand(b_size, args.nz, 1, 1, device=device)
             # Generate fake image batch with G
             fake = netG(noise)
             label.fill_(fake_label)
@@ -88,7 +91,7 @@ def dcgan(data_loader, netG, netD, args):
             optimizerG.step()
 
             # Output training stats
-            if i%50==0:
+            if i%500==0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                         % (epoch, args.num_epochs, i, len(data_loader), errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
 
@@ -108,11 +111,13 @@ def dcgan(data_loader, netG, netD, args):
         print('End of epoch: {}\n'.format(epoch))
 
         if epoch%10==0:
-            torch.save(netG.state_dict(), os.path.join('{}/{}'.format(args.checkpoint_path, args.dataset), 'netG_dcgan_epoch_{}.pth'.format(epoch)))
+            torch.save(netG.state_dict(), os.path.join('{}/{}'.format(args.checkpoint_path, args.model), 'netG_{}_epoch_{}.pth'.format(args.dataset, epoch)))
 
 
 
 def presgan(data_loader, netG, netD, log_sigma, args):
+    global iters
+
     device = args.device
     fixed_noise = torch.randn(args.batch_size, args.nz, 1, 1, device=device)
     paramsG = [p for p in netG.parameters() if p.requires_grad]
@@ -123,12 +128,12 @@ def presgan(data_loader, netG, netD, log_sigma, args):
     optimizerSigma = optim.Adam([log_sigma], lr=args.sigma_lr, betas=(args.beta1, 0.999))
     stepsize = args.stepsize_num / args.nz
 
-    writer = SummaryWriter('./runs/{}_exp_1'.format(args.dataset))
+    writer = SummaryWriter('./{}/{}/{}_exp_{}'.format(args.experiment_path, args.model, args.dataset, args.run))
     writer.add_graph(netG, fixed_noise)
 
     print('Starting training ...')
     # For each epoch
-    for epoch in range(args.num_epochs):
+    for epoch in tqdm(range(args.num_epochs)):
         # For each batch in the data_loader
         for i, data in enumerate(data_loader, 0):
             sigma_x = F.softplus(log_sigma).view(1, 1, args.image_size, args.image_size)
@@ -190,7 +195,7 @@ def presgan(data_loader, netG, netD, log_sigma, args):
             optimizerG.step()
             optimizerSigma.step()
 
-            if i%50==0:
+            if i%500==0:
                 print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
                         % (epoch, args.num_epochs, i, len(data_loader), errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
 
@@ -212,5 +217,5 @@ def presgan(data_loader, netG, netD, log_sigma, args):
         print('End of epoch: {}\n'.format(epoch))
 
         if epoch%10==0:
-            torch.save(netG.state_dict(), os.path.join('{}/{}'.format(args.checkpoint_path, args.dataset), 'netG_presgan_epoch_{}.pth'.format(epoch)))
-            torch.save(log_sigma, os.path.join('{}/{}'.format(args.checkpoint_path, args.dataset), 'log_sigma_epoch_{}.pth'.format(epoch)))
+            torch.save(netG.state_dict(), os.path.join('{}/{}'.format(args.checkpoint_path, args.model), 'netG_{}_epoch_{}.pth'.format(args.dataset, epoch)))
+            torch.save(log_sigma, os.path.join('{}/{}'.format(args.checkpoint_path, args.model), 'log_sigma_{}_epoch_{}.pth'.format(args.dataset, epoch)))

@@ -14,22 +14,26 @@ from model import build_discriminator, build_generator
 
 parser = argparse.ArgumentParser()
 
-# General training
-parser.add_argument('--dataset', default='cifar10', help='mnist | cifar10')
+# General
+parser.add_argument('--dataset', required=True, default='cifar10', help='mnist | cifar10')
+parser.add_argument('--model', required=True, type=str, default='dcgan', help='dcgan | presgan')
 parser.add_argument('--dataroot', type=str, default='./data', help='data path')
 parser.add_argument('--batch_size', type=int, default=16, help='num of batch size')
 parser.add_argument('--image_size', type=int, default=64, help='image size')
-parser.add_argument('--workers', type=int, default=4, help='num of loading workers')
-parser.add_argument('--model', type=str, default='dcgan', help='dcgan | presgan')
 parser.add_argument('--num_epochs', type=int, default=100, help='num of epochs')
+# Model
 parser.add_argument('--nz', type=int, default=100, help='noise size')
 parser.add_argument('--nc', type=int, default=3, help='image dimension, color:3 | greyscale:1')
 parser.add_argument('--ngf', type=int, default=64, help='generator filter size')
 parser.add_argument('--ndf', type=int, default=64, help='discriminator filter size')
+# Training
 parser.add_argument('--lr', type=float, default=0.0002, help='learning rate')
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam')
+parser.add_argument('--workers', type=int, default=1, help='num of loading workers')
 parser.add_argument('--seed', type=int, default=2020, help='manual seed')
 parser.add_argument('--ngpu', type=int, default=1, help='num of gpus')
+parser.add_argument('--run', type=int, default=1, help='num of running exp')
+parser.add_argument('--experiment_path', type=str, default='./experiment', help='experiment dir')
 parser.add_argument('--checkpoint_path', type=str, default='./checkpoint', help='checkpoint dir')
 
 # PresGAN
@@ -53,8 +57,12 @@ if not os.path.exists(args.dataroot):
 # create checkpoint dir
 if not os.path.exists(args.checkpoint_path):
     os.mkdir(args.checkpoint_path)
-if not os.path.exists(os.path.join(args.checkpoint_path, args.dataset)):
-    os.mkdir(os.path.join(args.checkpoint_path, args.dataset))
+if not os.path.exists(os.path.join(args.checkpoint_path, args.model)):
+    os.mkdir(os.path.join(args.checkpoint_path, args.model))
+if not os.path.exists(args.experiment_path):
+    os.mkdir(args.experiment_path)
+if not os.path.exists(os.path.join(args.experiment_path, args.model)):
+    os.mkdir(os.path.join(args.experiment_path, args.model))
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 args.device = device
